@@ -1,20 +1,28 @@
-import { Client } from "pg";
+import { Client, type ClientConfig } from "pg";
+
+// Cache client instance
+let cachedClient: Client | null = null;
+
 export const conn = async (): Promise<boolean> => {
   try {
-    const client = new Client({
-      user: process.env.PG_USERNAME,
-      password: process.env.PG_PASSWORD,
-      host: process.env.PG_HOST,
-      port: Number(process.env.PG_PORT),
-      database: process.env.PG_DATABASE,
-    });
+    if (!cachedClient) {
+      const pgConfig: ClientConfig = {
+        user: process.env.PG_USERNAME,
+        password: process.env.PG_PASSWORD,
+        host: process.env.PG_HOST,
+        port: Number(process.env.PG_PORT),
+        database: process.env.PG_DATABASE,
+      };
 
-    client.on("error", (err) => {
-      console.error("Database connection error:", err);
-    });
+      cachedClient = new Client(pgConfig);
 
-    await client.connect();
-    console.log("Connected to PostgreSQL");
+      cachedClient.on("error", (err) => {
+        console.error("Database connection error:", err);
+      });
+    }
+
+    await cachedClient.connect();
+    console.log("🐘 Connected to PostgreSQL");
 
     return true;
   } catch (error) {
@@ -31,4 +39,12 @@ export const conn = async (): Promise<boolean> => {
     }
     return false;
   }
+};
+
+// getter function client
+export const getClient = (): Client => {
+  if (!cachedClient) {
+    throw new Error("Database not connected. Call conn() first!");
+  }
+  return cachedClient;
 };
