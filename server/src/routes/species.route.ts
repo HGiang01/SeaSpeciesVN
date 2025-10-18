@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { uploadMemory } from "../config/multer.js";
 import {
   getAllSpecies,
   filterSpecies,
@@ -17,8 +18,8 @@ router.get("/filter", filterSpecies);
 router.get("/:name", getSpecies);
 
 // Manage species
-router.post("/add/:name", addSpecies);
-router.patch("/update/:name", updateSpecies);
+router.post("/add", uploadMemory.single("image"), addSpecies);
+router.patch("/update/:name", uploadMemory.single("image"), updateSpecies);
 router.delete("/delete/:name", deleteSpecies);
 
 export default router;
