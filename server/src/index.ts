@@ -4,6 +4,7 @@ import express from "express";
 
 import { conn } from "./config/db.js";
 import speciesRouter from "./routes/species.route.js";
+import pointRouter from "./routes/point.route.js";
 
 // Configs
 const PORT = process.env.PORT || 3000;
@@ -20,6 +21,7 @@ const isConnectedDB = await conn();
 
 // Routes
 app.use("/api/species", speciesRouter);
+app.use("/api/points", pointRouter);
 
 // Start server
 isConnectedDB &&
