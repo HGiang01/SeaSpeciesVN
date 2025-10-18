@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import path from "path";
 import express from "express";
 
@@ -6,9 +6,8 @@ import { conn } from "./config/db.js";
 import speciesRouter from "./routes/species.route.js";
 
 // Configs
-dotenv.config();
-const __dirname = path.resolve();
 const PORT = process.env.PORT || 3000;
+const __dirname = path.resolve();
 
 // Init app
 const app = express();
@@ -23,6 +22,7 @@ const isConnectedDB = await conn();
 app.use("/api/species", speciesRouter);
 
 // Start server
-isConnectedDB && app.listen(PORT, () => {
-  console.log(`Server is listening in port: ${PORT}`);
-});
+isConnectedDB &&
+  app.listen(PORT, () => {
+    console.log(`💻 Server is listening in port: ${PORT}`);
+  });
