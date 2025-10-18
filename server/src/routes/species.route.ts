@@ -18,8 +18,8 @@ router.get("/filter", filterSpecies);
 router.get("/:name", getSpecies);
 
 // Manage species
-router.post("/add", uploadMemory.single("image"), addSpecies);
-router.patch("/update/:name", uploadMemory.single("image"), updateSpecies);
-router.delete("/delete/:name", deleteSpecies);
+router.post("/", uploadMemory.single("image"), addSpecies);
+router.patch("/:name", uploadMemory.single("image"), updateSpecies);
+router.delete("/:name", deleteSpecies);
 
 export default router;
