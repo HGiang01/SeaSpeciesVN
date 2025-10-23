@@ -8,8 +8,8 @@ import {
 
 const router = Router();
 
-router.get("/:speciesName", getPoints);
-router.post("/:speciesName", createPoint);
+router.get("/:speciesId", getPoints);
+router.post("/:speciesId", createPoint);
 router.patch("/:id", updatePoint);
 router.delete("/:id", deletePoint);
 

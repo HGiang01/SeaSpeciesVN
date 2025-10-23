@@ -10,7 +10,7 @@ interface IPoint {
   lng: number;
 }
 
-const table = process.env.PG_POINTS_TB;
+const TABLE = process.env.PG_POINTS_TB;
 
 const isValidLatLng = (lat: number, lng: number) =>
   Number.isFinite(lat) &&
@@ -21,16 +21,20 @@ const isValidLatLng = (lat: number, lng: number) =>
   lng <= 180;
 
 export const getPoints = async (
-  req: Request<{ speciesName: string }>,
+  req: Request<{ speciesId: string }>,
   res: Response
 ): Promise<Response> => {
   try {
-    const { speciesName } = req.params;
+    const speciesId = Number(req.params.speciesId);
+
+    if (!Number.isInteger(speciesId)) {
+      return res.status(400).json({ message: "Invalid SpeciesId" });
+    }
 
     const points: QueryResult<IPoint> = await client.query({
       name: "get-all-points",
-      text: `SELECT * FROM ${table} WHERE name = $1`,
-      values: [speciesName],
+      text: `SELECT id, lat, lng FROM ${TABLE} WHERE species_id = $1`,
+      values: [speciesId],
     });
 
     return res.status(200).json({
@@ -55,16 +59,20 @@ export const getPoints = async (
 
 export const createPoint = async (
   req: Request<
-    { speciesName: string },
+    { speciesId: string },
     unknown,
     { lat: number | string; lng: number | string }
   >,
   res: Response
 ): Promise<Response> => {
   try {
-    const { speciesName } = req.params;
+    const speciesId = Number(req.params.speciesId);
     const latNum = Number(req.body?.lat);
     const lngNum = Number(req.body?.lng);
+
+    if (!Number.isInteger(speciesId)) {
+      return res.status(400).json({ message: "Invalid SpeciesId" });
+    }
 
     if (!isValidLatLng(latNum, lngNum)) {
       return res.status(400).json({ message: "Invalid lat/lng" });
@@ -72,8 +80,8 @@ export const createPoint = async (
 
     const point: QueryResult<IPoint> = await client.query({
       name: "create-points",
-      text: `INSERT INTO ${table} (name, lat, lng) VALUES ($1, $2, $3) RETURNING *`,
-      values: [speciesName, latNum, lngNum],
+      text: `INSERT INTO ${TABLE} (species_id, lat, lng) VALUES ($1, $2, $3) RETURNING *`,
+      values: [speciesId, latNum, lngNum],
     });
 
     return res.status(201).json({
@@ -118,7 +126,7 @@ export const updatePoint = async (
 
     const point: QueryResult<IPoint> = await client.query({
       name: "update-points",
-      text: `UPDATE ${table} SET lat = $1, lng = $2 WHERE id = $3 RETURNING *`,
+      text: `UPDATE ${TABLE} SET lat = $1, lng = $2 WHERE id = $3 RETURNING *`,
       values: [latNum, lngNum, idNum],
     });
 
@@ -158,7 +166,7 @@ export const deletePoint = async (
 
     const point: QueryResult<IPoint> = await client.query({
       name: "delete-points",
-      text: `DELETE FROM ${table} WHERE id = $1`,
+      text: `DELETE FROM ${TABLE} WHERE id = $1`,
       values: [idNum],
     });
 

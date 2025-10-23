@@ -6,11 +6,14 @@ import { client } from "../config/db.js";
 import { uploadImage, destroyImage } from "../utils/uploadImage.js";
 
 interface ISpecies {
+  id: number;
   name: string;
-  group_species?: string;
-  classis?: string;
-  familia?: string;
-  genus?: string;
+  en_name: string;
+  scientific_name: string;
+  group_species?: number;
+  classis?: number;
+  familia?: number;
+  genus?: number;
   author: string;
   image_url: string;
   characteristic: string;
@@ -23,7 +26,10 @@ interface ISpecies {
 
 // Whitelisted columns for filtering/creating/updating
 const ALLOWED_COLUMNS = [
+  "id",
   "name",
+  "en_name",
+  "scientific_name",
   "group_species",
   "classis",
   "familia",
@@ -35,7 +41,7 @@ const ALLOWED_COLUMNS = [
   "references_text",
 ];
 
-const table = process.env.PG_SPECIES_TB;
+const TABLE = process.env.PG_SPECIES_TB;
 
 // Controller for getting species
 export const getAllSpecies = async (
@@ -45,7 +51,7 @@ export const getAllSpecies = async (
   try {
     const species: QueryResult<ISpecies> = await client.query({
       name: "fetch-all-species",
-      text: `SELECT * FROM ${table}`,
+      text: `SELECT id, name, image_url, group_species FROM ${TABLE}`,
     });
 
     return res.status(200).json({
@@ -54,12 +60,9 @@ export const getAllSpecies = async (
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.log(
-        "❌ An error occurred while fetching species: ",
-        error.message
-      );
+      console.log("An error occurred while fetching species: ", error.message);
     } else {
-      console.log("❌ An error occurred while fetching species: ", error);
+      console.log("An error occurred while fetching species: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }
@@ -81,12 +84,12 @@ export const filterSpecies = async (
       const value = req.query[key];
       if (Array.isArray(value) && value.length > 1) {
         for (const subValue of value) {
-          whereClauses.push(`${key} LIKE $${paramIndex}`);
+          whereClauses.push(`${key} ILIKE $${paramIndex}`);
           queryValues.push(`%${subValue}%`);
           paramIndex++;
         }
       } else {
-        whereClauses.push(`${key} LIKE $${paramIndex}`);
+        whereClauses.push(`${key} ILIKE $${paramIndex}`);
         queryValues.push(`%${value}%`);
         paramIndex++;
       }
@@ -96,7 +99,7 @@ export const filterSpecies = async (
       return res.status(400).json({ message: "Missing query parameters" });
     }
 
-    const queryText = `SELECT * FROM ${table} WHERE ${whereClauses.join(
+    const queryText = `SELECT id, name, image_url, group_species FROM ${TABLE} WHERE ${whereClauses.join(
       " AND "
     )}`;
 
@@ -111,28 +114,29 @@ export const filterSpecies = async (
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.log(
-        "❌ An error occurred while filtering species: ",
-        error.message
-      );
+      console.log("An error occurred while filtering species: ", error.message);
     } else {
-      console.log("❌ An error occurred while filtering species: ", error);
+      console.log("An error occurred while filtering species: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 export const getSpecies = async (
-  req: Request,
+  req: Request<{ id: string }>,
   res: Response
 ): Promise<Response> => {
   try {
-    const nameOfSpecies = req.params.name;
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ message: "Invalid Id" });
+    }
 
     const species: QueryResult<ISpecies> = await client.query({
       name: "fetch-species",
-      text: `SELECT * FROM ${table} WHERE name = $1`,
-      values: [nameOfSpecies],
+      text: `SELECT * FROM ${TABLE} WHERE id = $1`,
+      values: [id],
     });
 
     return res.status(200).json({
@@ -141,12 +145,9 @@ export const getSpecies = async (
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.log(
-        "❌ An error occurred while getting species: ",
-        error.message
-      );
+      console.log("An error occurred while getting species: ", error.message);
     } else {
-      console.log("❌ An error occurred while getting species: ", error);
+      console.log("An error occurred while getting species: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }
@@ -162,14 +163,15 @@ export const addSpecies = async (
     const image = req.file;
 
     if (!name || !author || !characteristic || !image) {
+      image && (await fs.rm(image.path));
       return res.status(400).json({
         message: "Name, author, characteristic and image fields are required",
       });
     }
     // Test the viability of the species
     const species: QueryResult<ISpecies> = await client.query({
-      name: "check-species",
-      text: `SELECT 1 FROM ${table} WHERE name = $1`,
+      name: "check-species-name",
+      text: `SELECT 1 FROM ${TABLE} WHERE name = $1`,
       values: [name],
     });
 
@@ -204,7 +206,7 @@ export const addSpecies = async (
     queryValues.push(response.secure_url);
     placeholders.push(`$${paramIndex}`);
 
-    const insertQuery = `INSERT INTO ${table} (${columns.join(
+    const insertQuery = `INSERT INTO ${TABLE} (${columns.join(
       ", "
     )}) VALUES (${placeholders.join(", ")}) RETURNING *`;
 
@@ -219,22 +221,28 @@ export const addSpecies = async (
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.log("❌ An error occurred while adding species: ", error.message);
+      console.log("An error occurred while adding species: ", error.message);
     } else {
-      console.log("❌ An error occurred while adding species: ", error);
+      console.log("An error occurred while adding species: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 export const updateSpecies = async (
-  req: Request,
+  req: Request<{ id: string }>,
   res: Response
 ): Promise<Response> => {
   try {
-    const nameOfSpecies = req.params.name;
+    const id = Number(req.params.id);
+    
     const { name, characteristic } = req.body;
     const image = req.file;
+    
+    if (!Number.isInteger(id)) {
+      image && (await fs.rm(image.path));
+      return res.status(400).json({ message: "Invalid Id" });
+    }
 
     if (name === "" || characteristic === "") {
       image && (await fs.rm(image.path));
@@ -243,11 +251,25 @@ export const updateSpecies = async (
         .json({ message: "Name and Characteristic fields are required" });
     }
 
-    // ensure name of species is unique
-    if (name !== nameOfSpecies) {
+    // Test the viability of the species
+    const species: QueryResult<ISpecies> = await client.query({
+      name: "find-old-species",
+      text: `SELECT name, image_url FROM ${TABLE} WHERE id = $1`,
+      values: [id],
+    });
+
+    if (species.rowCount === 0) {
+      image && (await fs.rm(image.path));
+      return res.status(404).json({
+        message: "Species not found",
+      });
+    }
+
+    // Ensure name of species is unique
+    if (name !== species.rows[0]?.name) {
       const isExistSpecies: QueryResult<ISpecies> = await client.query({
-        name: "find-species",
-        text: `SELECT image_url FROM ${table} WHERE name = $1`,
+        name: "check-species-name",
+        text: `SELECT 1 FROM ${TABLE} WHERE name = $1`,
         values: [name],
       });
 
@@ -258,13 +280,6 @@ export const updateSpecies = async (
         });
       }
     }
-
-    // test the viability of the species
-    const species: QueryResult<ISpecies> = await client.query({
-      name: "find-species",
-      text: `SELECT image_url FROM ${table} WHERE name = $1`,
-      values: [nameOfSpecies],
-    });
 
     // Delete old image
     const oldImageUrl: string | undefined = species.rows[0]?.image_url;
@@ -280,7 +295,7 @@ export const updateSpecies = async (
     // Create query string
     let paramIndex = 1;
     const sets: Array<string> = [];
-    const queryValues: Array<string> = [];
+    const queryValues: Array<string | number> = [];
     for (const key in req.body) {
       if (!ALLOWED_COLUMNS.includes(key)) continue;
 
@@ -296,11 +311,11 @@ export const updateSpecies = async (
       paramIndex++;
     }
 
-    queryValues.push(nameOfSpecies!);
+    queryValues.push(id);
 
     const updateQuery = `UPDATE species SET ${sets.join(
       ", "
-    )} WHERE name = $${paramIndex} RETURNING *`;
+    )} WHERE id = $${paramIndex} RETURNING *`;
 
     const updateSpeciesResponse: QueryResult<ISpecies> = await client.query({
       text: updateQuery,
@@ -313,29 +328,31 @@ export const updateSpecies = async (
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.log(
-        "❌ An error occurred while updating species: ",
-        error.message
-      );
+      console.log("An error occurred while updating species: ", error.message);
     } else {
-      console.log("❌ An error occurred while updating species: ", error);
+      console.log("An error occurred while updating species: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 export const deleteSpecies = async (
-  req: Request,
+  req: Request<{ id: number }>,
   res: Response
 ): Promise<Response> => {
   try {
-    const nameOfSpecies = req.params.name;
+    let { id } = req.params;
 
-    // test the viability of the species
+    id = Number(id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ message: "Invalid Id" });
+    }
+
+    // Get old image url
     const species: QueryResult<ISpecies> = await client.query({
-      name: "find-species",
-      text: `SELECT image_url FROM ${table} WHERE name = $1`,
-      values: [nameOfSpecies],
+      name: "find-old-species-img-url",
+      text: `SELECT image_url FROM ${TABLE} WHERE id = $1`,
+      values: [id],
     });
 
     // Delete old image
@@ -344,16 +361,16 @@ export const deleteSpecies = async (
 
     await client.query({
       name: "delete-species",
-      text: `DELETE FROM ${table} WHERE name = $1`,
-      values: [nameOfSpecies],
+      text: `DELETE FROM ${TABLE} WHERE id = $1`,
+      values: [id],
     });
 
     return res.status(200).json({ message: "Delete species successfully" });
   } catch (error) {
     if (error instanceof Error) {
-      console.log("❌ An error occurred while adding species: ", error.message);
+      console.log("An error occurred while adding species: ", error.message);
     } else {
-      console.log("❌ An error occurred while adding species: ", error);
+      console.log("An error occurred while adding species: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }

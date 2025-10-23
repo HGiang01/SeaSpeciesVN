@@ -15,11 +15,11 @@ const router = Router();
 // Get species
 router.get("/", getAllSpecies);
 router.get("/filter", filterSpecies);
-router.get("/:name", getSpecies);
+router.get("/:id", getSpecies);
 
 // Manage species
 router.post("/", uploadMemory.single("image"), addSpecies);
-router.patch("/:name", uploadMemory.single("image"), updateSpecies);
-router.delete("/:name", deleteSpecies);
+router.patch("/:id", uploadMemory.single("image"), updateSpecies);
+router.delete("/:id", deleteSpecies);
 
 export default router;
