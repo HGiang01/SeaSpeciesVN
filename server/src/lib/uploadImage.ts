@@ -1,6 +1,5 @@
 import type { UploadApiOptions, UploadApiResponse } from "cloudinary";
 import fs from "fs/promises";
-import path from "path";
 
 import cloudinary from "../config/cloudinary.js";
 

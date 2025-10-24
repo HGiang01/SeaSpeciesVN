@@ -2,7 +2,7 @@ import "dotenv/config";
 import path from "path";
 import express from "express";
 
-import { conn } from "./config/db.js";
+import { conn } from "./lib/db.js";
 import speciesRouter from "./routes/species.route.js";
 import pointRouter from "./routes/point.route.js";
 

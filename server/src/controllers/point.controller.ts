@@ -1,7 +1,7 @@
 import { type Request, type Response } from "express";
 import { type QueryResult } from "pg";
 
-import { client } from "../config/db.js";
+import { client } from "../lib/db.js";
 
 interface IPoint {
   id: number;

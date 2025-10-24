@@ -2,8 +2,8 @@ import { type Request, type Response } from "express";
 import fs from "fs/promises";
 import { type QueryResult } from "pg";
 
-import { client } from "../config/db.js";
-import { uploadImage, destroyImage } from "../utils/uploadImage.js";
+import { client } from "../lib/db.js";
+import { uploadImage, destroyImage } from "../lib/uploadImage.js";
 
 interface ISpecies {
   id: number;
