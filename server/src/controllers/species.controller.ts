@@ -136,14 +136,14 @@ export const countTaxonomy = async (
       return res.status(400).json({ message: "Invalid taxonomy level" });
     }
 
-    const species: QueryResult<ISpecies> = await client.query({
+    const species: QueryResult = await client.query({
       text: `SELECT COUNT(*) FROM ${TABLE} WHERE ${level} = $1`,
       values: [value],
     });
 
     return res.status(200).json({
       message: "Get number of taxonomy successfully",
-      taxonomy: species.rows[0],
+      taxonomy: { level, value, count: Number(species.rows[0].count) },
     });
   } catch (error) {
     if (error instanceof Error) {
