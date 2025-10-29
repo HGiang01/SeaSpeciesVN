@@ -8,6 +8,7 @@ import {
   addSpecies,
   updateSpecies,
   deleteSpecies,
+  countTaxonomy
 } from "../controllers/species.controller.js";
 
 const router = Router();
@@ -21,5 +22,7 @@ router.get("/:id", getSpecies);
 router.post("/", uploadMemory.single("image"), addSpecies);
 router.patch("/:id", uploadMemory.single("image"), updateSpecies);
 router.delete("/:id", deleteSpecies);
+
+router.get("/taxonomy/count", countTaxonomy)
 
 export default router;

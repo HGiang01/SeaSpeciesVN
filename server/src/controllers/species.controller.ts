@@ -51,7 +51,7 @@ export const getAllSpecies = async (
   try {
     const species: QueryResult<ISpecies> = await client.query({
       name: "fetch-all-species",
-      text: `SELECT id, name, image_url, group_species FROM ${TABLE}`,
+      text: `SELECT id, name, en_name, scientific_name, author, image_url, group_species, classis, familia, genus FROM ${TABLE}`,
     });
 
     return res.status(200).json({
@@ -82,16 +82,18 @@ export const filterSpecies = async (
       if (!ALLOWED_COLUMNS.includes(key)) continue;
 
       const value = req.query[key];
-      if (Array.isArray(value) && value.length > 1) {
-        for (const subValue of value) {
+      if (value) {
+        if (Array.isArray(value) && value.length > 1) {
+          for (const subValue of value) {
+            whereClauses.push(`${key} ILIKE $${paramIndex}`);
+            queryValues.push(`%${subValue}%`);
+            paramIndex++;
+          }
+        } else {
           whereClauses.push(`${key} ILIKE $${paramIndex}`);
-          queryValues.push(`%${subValue}%`);
+          queryValues.push(`%${value}%`);
           paramIndex++;
         }
-      } else {
-        whereClauses.push(`${key} ILIKE $${paramIndex}`);
-        queryValues.push(`%${value}%`);
-        paramIndex++;
       }
     }
 
@@ -99,8 +101,8 @@ export const filterSpecies = async (
       return res.status(400).json({ message: "Missing query parameters" });
     }
 
-    const queryText = `SELECT id, name, image_url, group_species FROM ${TABLE} WHERE ${whereClauses.join(
-      " AND "
+    const queryText = `SELECT id, name, en_name, scientific_name, author, image_url, group_species, classis, familia, genus FROM ${TABLE} WHERE ${whereClauses.join(
+      " OR "
     )}`;
 
     const species: QueryResult<ISpecies> = await client.query({
@@ -117,6 +119,40 @@ export const filterSpecies = async (
       console.log("An error occurred while filtering species: ", error.message);
     } else {
       console.log("An error occurred while filtering species: ", error);
+    }
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const countTaxonomy = async (
+  req: Request<unknown, unknown, unknown, { level: string; value: string }>,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { level, value } = req.query;
+    const invalidLevel = ["classis", "familia", "genus"];
+
+    if (!invalidLevel.includes(level)) {
+      return res.status(400).json({ message: "Invalid taxonomy level" });
+    }
+
+    const species: QueryResult<ISpecies> = await client.query({
+      text: `SELECT COUNT(*) FROM ${TABLE} WHERE ${level} = $1`,
+      values: [value],
+    });
+
+    return res.status(200).json({
+      message: "Get number of taxonomy successfully",
+      taxonomy: species.rows[0],
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log(
+        "An error occurred while counting species taxonomy: ",
+        error.message
+      );
+    } else {
+      console.log("An error occurred while counting species taxonomy: ", error);
     }
     return res.status(500).json({ message: "Internal Server Error" });
   }
@@ -235,10 +271,10 @@ export const updateSpecies = async (
 ): Promise<Response> => {
   try {
     const id = Number(req.params.id);
-    
+
     const { name, characteristic } = req.body;
     const image = req.file;
-    
+
     if (!Number.isInteger(id)) {
       image && (await fs.rm(image.path));
       return res.status(400).json({ message: "Invalid Id" });

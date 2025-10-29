@@ -1,6 +1,7 @@
 import "dotenv/config";
 import path from "path";
 import express from "express";
+import cors from "cors";
 
 import { conn } from "./lib/db.js";
 import speciesRouter from "./routes/species.route.js";
@@ -14,6 +15,7 @@ const __dirname = path.resolve();
 const app = express();
 
 // Middlewares
+app.use(cors());
 app.use(express.json());
 
 // Connect database
